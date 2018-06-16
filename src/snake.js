@@ -7,10 +7,15 @@ var Direction;
 })(Direction || (Direction = {}));
 ;
 var Snake = (function () {
-    function Snake() {
+    function Snake(gameArea) {
         this.snake = [];
+        this.Rows = 20;
+        this.Columns = 20;
+        this.moveSnakeInterval = 500;
         this.defaultSnakeLength = 5;
         this.nextHeadDirection = Direction.RIGHT;
+        this.snakeCrashEvent = new CustomEvent('snakeCrash', { bubbles: true, detail: new Error("snake has crashed") });
+        this.gameArea = gameArea || document.getElementById('grid') || document.body;
     }
     Snake.prototype.initializeGame = function () {
         this.createGrid();
@@ -22,7 +27,7 @@ var Snake = (function () {
         var self = this;
         this.intervalhandle = setInterval(function () {
             self.moveSnake();
-        }, 1000);
+        }, this.moveSnakeInterval);
     };
     Snake.prototype.stopInterval = function () {
         clearInterval(this.intervalhandle);
@@ -34,8 +39,8 @@ var Snake = (function () {
         });
     };
     Snake.prototype.createGrid = function () {
-        var gridBody = document.getElementById('grid');
-        var grid = new Grid(20, 20, gridBody);
+        this.gameArea = document.getElementById('grid') || document.body;
+        var grid = new Grid(this.Rows, this.Columns, this.gameArea);
         grid.createGrid();
     };
     Snake.prototype.createSnake = function () {
@@ -43,7 +48,6 @@ var Snake = (function () {
         this.renderSnake();
     };
     Snake.prototype.moveSnake = function () {
-        console.log('interval handle ' + this.intervalhandle);
         this.clearRenderedSnake();
         this.moveSnakeByOneStep();
         var snakeLength = this.snake.length;
@@ -63,13 +67,13 @@ var Snake = (function () {
     Snake.prototype.moveCellToDirection = function (nextDirection, cellId) {
         switch (nextDirection) {
             case Direction.UP:
-                return this.calculateCellIdForNextMove(cellId, this.processRow, this.decreaseParam);
+                return this.calculateCellIdForNextMove(cellId, this.processRow.bind(this), this.decreaseParam);
             case Direction.DOWN:
-                return this.calculateCellIdForNextMove(cellId, this.processRow, this.increaseParam);
+                return this.calculateCellIdForNextMove(cellId, this.processRow.bind(this), this.increaseParam);
             case Direction.RIGHT:
-                return this.calculateCellIdForNextMove(cellId, this.processColumn, this.increaseParam);
+                return this.calculateCellIdForNextMove(cellId, this.processColumn.bind(this), this.increaseParam);
             case Direction.LEFT:
-                return this.calculateCellIdForNextMove(cellId, this.processColumn, this.decreaseParam);
+                return this.calculateCellIdForNextMove(cellId, this.processColumn.bind(this), this.decreaseParam);
             default:
                 console.log("Incorrect Direction !");
                 break;
@@ -80,12 +84,31 @@ var Snake = (function () {
         return processFunction(splitId, processCellFunnction);
     };
     Snake.prototype.processColumn = function (splitId, processCellFunnction) {
-        splitId[3] = processCellFunnction(parseInt(splitId[3])).toString();
+        var columnNumber = parseInt(splitId[3]);
+        if ((columnNumber == this.Columns - 1 && processCellFunnction == this.increaseParam)
+            || (columnNumber == 0 && processCellFunnction == this.decreaseParam)) {
+            this.gameOverEvent();
+        }
+        else {
+            splitId[3] = processCellFunnction(columnNumber).toString();
+        }
         return splitId.join('-');
     };
     Snake.prototype.processRow = function (splitId, processCellFunnction) {
-        splitId[1] = processCellFunnction(parseInt(splitId[1])).toString();
+        var rowNumber = parseInt(splitId[1]);
+        if ((rowNumber == this.Rows - 1 && processCellFunnction == this.increaseParam)
+            || (rowNumber == 0 && processCellFunnction == this.decreaseParam)) {
+            this.gameOverEvent();
+        }
+        else {
+            splitId[1] = processCellFunnction(rowNumber).toString();
+        }
         return splitId.join('-');
+    };
+    Snake.prototype.gameOverEvent = function () {
+        console.log('throwing the crash event');
+        this.stopInterval();
+        this.gameArea.dispatchEvent(this.snakeCrashEvent);
     };
     Snake.prototype.increaseParam = function (param) {
         return param + 1;

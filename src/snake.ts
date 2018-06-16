@@ -9,12 +9,17 @@ enum Direction {
 
 class Snake {
     private snake: string[] = [];
+    private Rows = 20;
+    private Columns = 20;
+    readonly moveSnakeInterval = 500; //ms
+    private gameArea: HTMLElement;
     readonly defaultSnakeLength = 5;
     private nextHeadDirection: Direction = Direction.RIGHT;
-    private intervalhandle:number;
+    private intervalhandle: number;
+    private snakeCrashEvent = new CustomEvent('snakeCrash', { bubbles: true, detail: new Error("snake has crashed") });
 
-    constructor() {
-
+    constructor(gameArea?: HTMLElement) {
+        this.gameArea = gameArea || document.getElementById('grid') || document.body;
     }
 
     initializeGame() {
@@ -28,23 +33,23 @@ class Snake {
         let self = this;
         this.intervalhandle = setInterval(function () {
             self.moveSnake();
-        }, 1000);
+        }, this.moveSnakeInterval);
     }
 
-    stopInterval(){
+    stopInterval() {
         clearInterval(this.intervalhandle);
     }
 
     addKeyPressListener() {
         let self = this;
-        document.addEventListener("keydown", (event:KeyboardEvent)=>{
+        document.addEventListener("keydown", (event: KeyboardEvent) => {
             self.recognizeKeyPress(event);
         });
     }
 
     createGrid() {
-        let gridBody = document.getElementById('grid');
-        let grid = new Grid(20, 20, gridBody);
+        this.gameArea = document.getElementById('grid') || document.body;
+        let grid = new Grid(this.Rows, this.Columns, this.gameArea);
         grid.createGrid();
     }
 
@@ -56,7 +61,6 @@ class Snake {
 
     // Move each cell into the direction of it's next cell
     moveSnake() {
-        console.log('interval handle ' + this.intervalhandle);
         this.clearRenderedSnake();
         this.moveSnakeByOneStep();
         //Move the head
@@ -85,13 +89,13 @@ class Snake {
 
         switch (nextDirection) {
             case Direction.UP:
-                return this.calculateCellIdForNextMove(cellId, this.processRow, this.decreaseParam);
+                return this.calculateCellIdForNextMove(cellId, this.processRow.bind(this), this.decreaseParam);
             case Direction.DOWN:
-                return this.calculateCellIdForNextMove(cellId, this.processRow, this.increaseParam);
+                return this.calculateCellIdForNextMove(cellId, this.processRow.bind(this), this.increaseParam);
             case Direction.RIGHT:
-                return this.calculateCellIdForNextMove(cellId, this.processColumn, this.increaseParam);
+                return this.calculateCellIdForNextMove(cellId, this.processColumn.bind(this), this.increaseParam);
             case Direction.LEFT:
-                return this.calculateCellIdForNextMove(cellId, this.processColumn, this.decreaseParam);
+                return this.calculateCellIdForNextMove(cellId, this.processColumn.bind(this), this.decreaseParam);
             default:
                 console.log("Incorrect Direction !");
                 break;
@@ -105,13 +109,31 @@ class Snake {
     }
 
     processColumn(splitId: string[], processCellFunnction: Function) {
-        splitId[3] = processCellFunnction(parseInt(splitId[3])).toString();
+        let columnNumber = parseInt(splitId[3]);
+        if ((columnNumber == this.Columns - 1 && processCellFunnction == this.increaseParam)
+            || (columnNumber == 0 && processCellFunnction == this.decreaseParam)) {
+            this.gameOverEvent();
+        } else {
+            splitId[3] = processCellFunnction(columnNumber).toString();
+        }
         return splitId.join('-');
     }
 
     processRow(splitId: string[], processCellFunnction: Function) {
-        splitId[1] = processCellFunnction(parseInt(splitId[1])).toString();
+        let rowNumber = parseInt(splitId[1]);
+        if ((rowNumber == this.Rows - 1 && processCellFunnction == this.increaseParam)
+            || (rowNumber == 0 && processCellFunnction == this.decreaseParam)) {
+            this.gameOverEvent();
+        } else {
+            splitId[1] = processCellFunnction(rowNumber).toString();
+        }
         return splitId.join('-');
+    }
+
+    gameOverEvent() {
+        console.log('throwing the crash event')
+        this.stopInterval();
+        this.gameArea.dispatchEvent(this.snakeCrashEvent);
     }
 
     increaseParam(param: number) {

@@ -25,6 +25,12 @@ button{
 
 }
 
-
+.gameOver{
+	margin : 3em;
+	margin-left: 5em;
+	color : red;
+	font-size: xx-large;
+	font-weight: bolder;
+}
 
 
