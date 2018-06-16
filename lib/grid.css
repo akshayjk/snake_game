@@ -1,0 +1,11 @@
+.cell {
+	margin:0;
+	padding:0;
+	display: table-cell;
+	float:left;
+
+}
+
+.alive{
+	background-color: black;
+}
